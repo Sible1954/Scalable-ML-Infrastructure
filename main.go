@@ -5,14 +5,32 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"scalable-ml-infrastructure/api"
+	"scalable-ml-infrastructure/config"
+	"scalable-ml-infrastructure/middleware"
 )
 
 func main() {
-	fmt.Println("Starting Scalable ML Infrastructure Server...")
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
-	http.HandleFunc("/predict", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Prediction endpoint: Model serving is active!")
-	})
+	fmt.Printf("Starting Scalable ML Infrastructure Server on port %s...
+", cfg.ServerPort)
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router := http.NewServeMux()
+
+	api.RegisterHandlers(router)
+
+	loggingHandler := middleware.LoggingMiddleware(router)
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%s", cfg.ServerPort),
+		Handler: loggingHandler,
+	}
+
+	log.Printf("Server listening on http://localhost:%s
+", cfg.ServerPort)
+	log.Fatal(server.ListenAndServe())
 }
